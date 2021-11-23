@@ -17,8 +17,6 @@ client.connect((socket.gethostname(), 37020))
 # Set a timeout so the socket does not block
 # indefinitely when trying to receive data.
 client.settimeout(0.2)
-message = b"your very important message"
-while True:
-    client.sendto(message, ('<broadcast>', 37020))
-    print("message sent!")
-    time.sleep(1)
+
+message = client.recv(1024)
+print("message received:"+ message.decode("utf-8"))

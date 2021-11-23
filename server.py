@@ -50,6 +50,8 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 server.bind((socket.gethostname(), 37020))
+message = bytes("your very important message")
 while True:
-    data, addr = server.recvfrom(1024)
-    print("received message: %s"%data)
+    clientsocket, address = server.accept()
+    print(f"Connection form {address} has been established")
+    clientsocket.send(message, "utf-8")
