@@ -49,7 +49,7 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 # Enable broadcasting mode
 server.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-server.bind(("", 37020))
+server.bind((socket.gethostname(), 37020))
 while True:
     data, addr = server.recvfrom(1024)
     print("received message: %s"%data)
