@@ -7,7 +7,7 @@ client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # 
 # For linux hosts all sockets that want to share the same address and port combination must belong to processes that share the same effective user ID!
 # So, on linux(kernel>=3.9) you have to run multiple servers and clients under one user to share the same (host, port).
 
-client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # Enable broadcasting mode
 client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
