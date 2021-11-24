@@ -8,7 +8,7 @@ import time
 from socket import *
 
 # File path for storing sequence numbers
-tempfile = "./"
+tempfile = "./testfile.txt"
 
 # Send to Server
 def rdt_send(file_name,mss,seq_no):
@@ -76,7 +76,7 @@ def recent_sequence(window_size,tempfile):
 
 # Set Sent sequence number
 def seq_sent(seq_no,tempfile):
-	fptr = open(tempfile, "r+w")
+	fptr = open(tempfile, "r")
 	fcntl.flock(fptr.fileno(),fcntl.LOCK_EX)
 	data = fptr.readlines()
 	if data[int(seq_no)] == seq_no + ",\n":
@@ -251,7 +251,7 @@ while 1:
 		break
 
 	send_seq_no = recent_sequence(window_size,tempfile)
-	if send_seq_no > -1:
+	if int(send_seq_no) > -1:
 		seq_sent(send_seq_no,tempfile)
 		message_to_send = rdt_send(send_file,mss,int(send_seq_no))
 		client_socket.sendto(message_to_send,(server_host,port))
