@@ -1,109 +1,95 @@
-# Name: Simin Wen
-# ID: wens3
-# Version: python 3
-
-import socket
-import utils
-from utils import DEBUG, States
+from socket import *
+from decimal import *
+import os 
+import random
 import time
+import sys
 
-UDP_IP = "127.0.0.1"
-UDP_PORT = 5005
+# Collect CLI arguments
+f_name = sys.argv[2]
+probability = float(sys.argv[3])
+port = int(sys.argv[1])
+hostname = ""
 
-# initial server_state
-server_state = States.CLOSED
+# Method to send to client
+def rdt_send(msg,s_counter):
+	if msg:	
+		seq_no = str(int(msg[0:32],2))
+		expected_seq = s_counter
+		# print "Waiting on Sequence #" + str(expected_seq)	
+		send_seq_no = '{0:032b}'.format(int(seq_no))
+		pad = '0' * 16
+		ack_ind = '10' * 8
+		return send_seq_no + pad + ack_ind
+	else:
+		return ''
 
-sock = socket.socket(socket.AF_INET,  # Internet
-                     socket.SOCK_DGRAM)  # UDP
+# Calculate the checksum
+def checksum_gen(temp_msg):
+	if temp_msg[48:64] == '01' * 8:
+		total = 0
+		data = [temp_msg[i:i+16] for i in range(0,len(temp_msg),16)]
+		for d in data:
+			total += int(d,2)
+			if total >= 65535:
+				total -= 65535
+			if total == 0:
+				return 1
+			else:
+				return -1
+	else:
+		return -1
 
-sock.bind((UDP_IP, UDP_PORT))  # wait for connection
+# Write to File
+def f_write(msg,f_name):
+	f_ptr = open(f_name,'a')
+	temp_msg = str(msg[64:])
+	temp = len(temp_msg)/8
+	to_write = ''
+	for i in range(0,temp):
+		bit_data = str(temp_msg[i*8:(i+1)*8])
+		char_data = chr(int(bit_data, 2))
+		to_write = to_write + char_data
+	f_ptr.write(to_write)
+	f_ptr.close()
 
+# Return Random number
+def random_num():
+	while 1:
+		generated_number = random.random()
+		if Decimal(generated_number) != Decimal(0.0):
+			break
+	return generated_number
 
-# Some helper functions to keep the code clean and tidy
-def update_server_state(new_state):
-    global server_state
-    if utils.DEBUG:
-        print(server_state, '->', new_state)
-    server_state = new_state
+# Communication
+s = socket(AF_INET,SOCK_DGRAM)
+s.bind((hostname,port))
+print ("Listening for client requests ... ")
+s_counter = 0
+while 1:
+	msg, client_address = s.recvfrom(65535)
+	rnum = random_num()
+	if rnum > probability:
+		checksum = checksum_gen(msg)
+		if checksum == 1 and msg[48:64] == '01' * 8:
+			got_seq_no = int(msg[0:32],2)
+			if got_seq_no == s_counter:
+				to_send = rdt_send(msg,s_counter)
+				if to_send:
+					s.sendto(to_send, client_address)
+					f_write(msg,f_name)
+					s_counter = s_counter + 1
+			elif got_seq_no > s_counter:
+				print ("Packet loss, sequence number = " + str(got_seq_no))
+			elif got_seq_no < s_counter:
+				to_send = rdt_send(msg,s_counter)
+				if to_send:
+					# print ("Retransmitted ACK - " + str(got_seq_no))
+					s.sendto(to_send, client_address)
+		else:
+			print ("Checksum invalid. Packet dropped.")
+	else:
+		got_seq_no = int(msg[0:32],2)
+		print ("Packet loss, sequence number = " + str(got_seq_no))
 
-
-# Receive a message and return header, body and addr
-# addr is used to reply to the client
-# this call is blocking
-def recv_msg():
-    if utils.DEBUG:
-        print("masuk fungsi recv")
-    data, addr = sock.recvfrom(1024)
-    if utils.DEBUG:
-        print("data, addr berhasil")
-    header = utils.bits_to_header(data)
-    if utils.DEBUG:
-        print("header berhasil")
-    body = utils.get_body_from_data(data)
-    if utils.DEBUG:
-        print("keluar fungsi recv")
-    return (header, body, addr)
-
-
-# the server runs in an infinite loop and takes
-# action based on current state and updates its state
-# accordingly
-# You will need to add more states, please update the possible
-# states in utils.py file
-ack_number = 0
-seq_number = 0
-while True:
-    if server_state == States.CLOSED:
-        # we already started listening, just update the state
-        update_server_state(States.LISTEN)
-    elif server_state == States.LISTEN:
-        # we are waiting for a message
-        header, body, addr = recv_msg()
-        # if received message is a syn message, it's a connection
-        # initiation
-        if header.syn == 1:
-            seq_number = utils.rand_int()  # we randomly pick a sequence number
-            ack_number = header.seq_num + 1
-            # to be implemented
-            update_server_state(States.SYN_RECEIVED)
-    ### sending message from the server:
-    #   use the following method to send messages back to client
-    #   addr is recieved when we receive a message from a client (see above)
-    #   sock.sendto(your_header_object.bits(), addr)
-
-    elif server_state == States.SYN_RECEIVED:
-        header = utils.Header(seq_number, ack_number, 1, 1, 0)
-        sock.sendto(header.bits(), addr)
-        update_server_state(States.SYN_SENT)
-    elif server_state == States.SYN_SENT:
-        if utils.DEBUG :
-            print("jarkom")
-        header, body, addr2 = recv_msg()
-        if (utils.DEBUG):
-            print(addr, "==", addr2)
-            print("header.ack ==", header.ack)
-            print(header.ack_num, "==", seq_number)
-        if addr == addr2 and header.ack == 1 and header.ack_num == seq_number + 1:
-            update_server_state(States.ESTABLISHED)
-        # if we never met such respond message, it will stuck here, we need a time limit to quit the state
-    elif server_state == States.ESTABLISHED:
-        header, body, addr3 = recv_msg()
-        if addr == addr3 and header.fin == 1:
-            seq_number = utils.rand_int()  # we randomly pick a sequence number
-            ack_number = header.seq_num + 1
-            update_server_state(States.FIN_RCVD)
-    elif server_state == States.FIN_RCVD:
-        header = utils.Header(seq_number, ack_number, 0, 1, 0)
-        sock.sendto(header.bits(), addr3)
-        update_server_state(States.CLOSE_WAIT)
-    elif server_state == States.CLOSE_WAIT:
-        # wait 2MSL
-        time.sleep(1)
-        seq_number = utils.rand_int()
-        ack_number = header.ack_num
-        header = utils.Header(seq_number, ack_number, 1, 1, 1)
-        update_server_state(States.LAST_ACK)
-    elif server_state == States.LAST_ACK:
-        header, body, addr4 = recv_msg()
-        if addr == addr4 and header.ack == 1 and header.ack_num == seq_number + 1 and header.seq_num == ack_number:
-            update_server_state(States.CLOSED)
+s.close()
