@@ -4,7 +4,7 @@
 
 import socket
 import utils
-from utils import States
+from utils import DEBUG, States
 import time
 
 UDP_IP = "127.0.0.1"
@@ -31,10 +31,17 @@ def update_server_state(new_state):
 # addr is used to reply to the client
 # this call is blocking
 def recv_msg():
+    if utils.DEBUG:
+        print("masuk fungsi recv")
     data, addr = sock.recvfrom(1024)
+    if utils.DEBUG:
+        print("data, addr berhasil")
     header = utils.bits_to_header(data)
-    print(f"address: {addr}")
+    if utils.DEBUG:
+        print("header berhasil")
     body = utils.get_body_from_data(data)
+    if utils.DEBUG:
+        print("keluar fungsi recv")
     return (header, body, addr)
 
 
@@ -69,10 +76,13 @@ while True:
         sock.sendto(header.bits(), addr)
         update_server_state(States.SYN_SENT)
     elif server_state == States.SYN_SENT:
-        # print(addr, "==", addr2)
-        # print("header.ack ==", header.ack)
-        # print(header.ack_num, "==", seq_number)
+        if utils.DEBUG :
+            print("jarkom")
         header, body, addr2 = recv_msg()
+        if (utils.DEBUG):
+            print(addr, "==", addr2)
+            print("header.ack ==", header.ack)
+            print(header.ack_num, "==", seq_number)
         if addr == addr2 and header.ack == 1 and header.ack_num == seq_number + 1:
             update_server_state(States.ESTABLISHED)
         # if we never met such respond message, it will stuck here, we need a time limit to quit the state
