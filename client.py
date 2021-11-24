@@ -8,7 +8,7 @@ import time
 from socket import *
 
 # File path for storing sequence numbers
-tempfile = ""
+tempfile = "./"
 
 # Send to Server
 def rdt_send(file_name,mss,seq_no):
