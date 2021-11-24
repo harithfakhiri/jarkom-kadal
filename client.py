@@ -1,22 +1,13 @@
 import socket
-import time
 
-client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((socket.gethostname(), 1234))
 
-# Enable port reusage so we will be able to run multiple clients and servers on single (host, port). 
-# Do not use socket.SO_REUSEADDR except you using linux(kernel<3.9): goto https://stackoverflow.com/questions/14388706/how-do-so-reuseaddr-and-so-reuseport-differ for more information.
-# For linux hosts all sockets that want to share the same address and port combination must belong to processes that share the same effective user ID!
-# So, on linux(kernel>=3.9) you have to run multiple servers and clients under one user to share the same (host, port).
-# Thanks to @stevenreddie
-client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+full_msg = ''
+while True:
+    msg = s.recv(8)
+    if len(msg)<=0:
+        break
+    full_msg += msg.decode("utf-8")
 
-# Enable broadcasting mode
-client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-client.connect((socket.gethostname(), 37020))
-
-# Set a timeout so the socket does not block
-# indefinitely when trying to receive data.
-client.settimeout(0.2)
-
-message = client.recv(1024)
-print("message received:"+ message.decode("utf-8"))
+print(full_msg)
