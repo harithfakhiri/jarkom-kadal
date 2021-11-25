@@ -137,7 +137,7 @@ def send_file(addr, port, clients, data_parts):
 	sock.close()
 	print("Server Connection Closed")
 
-handshake(addr, port)
+handshake(addr, port, clients)
 get_data(filepath)
 print("data length", len(data_parts))
 send_file(addr, port, clients, data_parts)
