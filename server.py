@@ -25,7 +25,7 @@ while searching:
 	except socket.timeout as e:
 		err = e.args[0]
 		if err == 'timed out':
-			sleep(2)
+			sleep(3)
 			print('no client')
 			continue
 		else:
@@ -33,7 +33,7 @@ while searching:
 			sys.exit(1)
 	else:
 		print(f"[!] Client ({address[0]}:{address[1]}) found")
-		sock.sendto(b"Broadcast diterima", (address))
+		sock.sendto(b"Broadcast accepted", (address))
 		client.append(address)
 		continue_search = str(input("[?] Listen more ? (y/n) "))
 		if (continue_search != "y"):
@@ -68,7 +68,7 @@ def get_data(filepath):
 	return D
 
 
-def handshake(addr, port, clients, sock):
+def handshake(clients, sock):
 
 	for i in range(len(clients)):
 		sequence_number = 1
@@ -87,7 +87,7 @@ def handshake(addr, port, clients, sock):
 			print(f"Sending {packet.flag} tp {clients[i]}")
 
 
-def send_file(addr, port, clients, data_parts, sock):
+def send_file(clients, data_parts, sock):
 	print("Commencing file transfer...")
 	sb = 0
 	N = len(data_parts)-1
@@ -132,10 +132,10 @@ def send_file(addr, port, clients, data_parts, sock):
 					packet.create_checksum()
 					packet = packet.convert_to_bytes()
 					sock.sendto(packet, clients[i])
-			sleep(2)
+			sleep(3)
 	sock.close()
 	print("Server Connection Closed")
 
-handshake(addr, port, clients, sock)
+handshake(clients, sock)
 data_parts1 = get_data(filepath)
-send_file(addr, port, clients, data_parts1, sock)
+send_file(clients, data_parts1, sock)

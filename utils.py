@@ -21,40 +21,26 @@ class Utils:
         self.checksum = checksum
         self.data = data
 
-    def __str__(self):
-        return "sequence number: {} | acknowledgement number: {} | flags: {} | checksum: {} | data: {}".format(self.sequence, self.acknowledge, self.flag, self.checksum, self.data)
-
     def create_header_bit(self):
         sequence = format(self.sequence, '032b')
-
         acknowledge = format(self.acknowledge, '032b')
-
         flag = format(FLAG[self.flag], '08b')
-
         empty = format(0x0, '08b')
-
         header = f"{sequence}{acknowledge}{flag}{empty}"
 
         return header
 
-    def create_data_bit(self):
-        print(type(self.data))
-        # return ''.join(format(ord(i), '08b') for i in self.data)
-        return bin(int.from_bytes(self.data, byteorder="big"))[2:]
-
     def convert_to_bytes(self):
         header = self.create_header_bit()
-        # print("checksum", self.create_checksum())
         header = header + self.create_checksum()
-        # print(header)
         header = int(header, 2).to_bytes(12, 'big')
-        # print(header)
 
         if (self.data):
-            data = self.data
-            return header + data
+            final_bytes = header + self.data
+        else :
+            final_bytes = header
 
-        return header
+        return final_bytes
 
     def create_checksum(self):
         header = self.create_header_bit()
@@ -67,7 +53,7 @@ class Utils:
 
         # count data sum
         if self.data:
-            data = self.create_data_bit()
+            data = bin(int.from_bytes(self.data, byteorder="big"))[2:]
             for i in range(0, len(data), 16):
                 integer_sum = Utils.ones_comp_add16(
                     integer_sum, int(data[i:i+16], 2))
@@ -75,12 +61,11 @@ class Utils:
             '1' if i == '0' else '0' for i in format(integer_sum, '016b'))
 
         return checksum
-    
 
     def validate_checksum(self):
 
         header_bit = self.create_header_bit()
-        data_bit = self.create_data_bit()
+        data_bit = bin(int.from_bytes(self.data, byteorder="big"))[2:]
 
         new_sum = 0
         for i in range(0, len(header_bit), 16):

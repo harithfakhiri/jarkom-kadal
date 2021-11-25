@@ -3,11 +3,11 @@ import socket
 import sys
 from utils import Utils
 from time import sleep
+import base64
 
 addr = "127.0.0.1"
 port = int(sys.argv[1])
 path = sys.argv[2]
-server_address = "0.0.0.1"
 server_port = 3000
 packet = []
 
@@ -51,7 +51,7 @@ def recmsg(addr, port, filepath, packet, sock):
 		else:
 			if (recv_packet.sequence == rn and recv_packet.checksum == recv_packet.create_checksum()):
 				packet.append(recv_packet)
-				f.write(recv_packet.data)
+				f.write(base64.b64decode(recv_packet.data))
 				rn += 1
 			packet = Utils(0, rn, "ACK")
 			packet = packet.convert_to_bytes()
