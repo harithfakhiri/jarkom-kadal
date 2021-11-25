@@ -107,9 +107,10 @@ def send_file(addr, port, clients, data_parts, sock):
 			recv_packet = Utils.convert_to_packet(data)
 			if (recv_packet.acknowledge > sb and recv_packet.flag == "ACK"):
 				print(f"[Segment SEQ={recv_packet.acknowledge-1}] Acked")
-				sm = (sm - sb) + recv_packet.acknowledge if sm < len(
-					data_parts) else len(data_parts)
-				sb = recv_packet.acknowledge
+				if sm < len(data_parts) :
+					sm = (sm - sb) + recv_packet.acknowledge
+				else :
+					sb = recv_packet.acknowledge
 				if (recv_packet.acknowledge == len(data_parts)):
 					packet = Utils(sb, 0, "FIN")
 					packet = packet.convert_to_bytes()

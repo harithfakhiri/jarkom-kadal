@@ -1,7 +1,7 @@
 from os import close
 import socket
 import sys
-from utils import Utils, MAX_DATA_LENGTH
+from utils import Utils
 from time import sleep
 
 addr = "127.0.0.1"

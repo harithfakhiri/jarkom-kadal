@@ -75,6 +75,7 @@ class Utils:
             '1' if i == '0' else '0' for i in format(integer_sum, '016b'))
 
         return checksum
+    
 
     def validate_checksum(self):
 
