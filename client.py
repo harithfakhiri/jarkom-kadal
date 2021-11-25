@@ -4,7 +4,7 @@ import sys
 from utils import Utils, MAX_DATA_LENGTH
 from time import sleep
 
-addr = socket.gethostname()
+addr = "127.0.0.1"
 port = int(sys.argv[1])
 path = sys.argv[2]
 server_address = "0.0.0.1"
