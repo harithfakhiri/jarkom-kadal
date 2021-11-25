@@ -10,7 +10,6 @@ path = sys.argv[2]
 server_address = "0.0.0.1"
 server_port = 3000
 packet = []
-status= "CLOSED"
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -25,7 +24,7 @@ print(response.decode("utf-8"), "dari address:", addr)
 
 def handshake(addr, port):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.bind((addr, port))
+	# sock.bind((addr, port))
 	recv_packet, addr = sock.recvfrom(32780)
 	recv_packet = Utils.convert_to_packet(recv_packet)
 	print(f"Received {recv_packet.flag} from {addr}")
@@ -41,7 +40,7 @@ def handshake(addr, port):
 
 def recmsg(addr, port, filepath, packet):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.bind((addr, port))
+	# sock.bind((addr, port))
 	rn = 0
 	f = open(filepath, 'ab')
 	while (True):

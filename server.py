@@ -21,7 +21,9 @@ client = []
 while searching:
 	try:
 		data, address = sock.recvfrom(1024)
+		print("a")
 	except socket.timeout as e:
+		print("b")
 		err = e.args[0]
 		if err == 'timed out':
 			sleep(1)
