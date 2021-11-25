@@ -1,95 +1,141 @@
-from socket import *
-from decimal import *
-import os 
-import random
-import time
 import sys
+import socket
+from utils import Utils, MAX_DATA_LENGTH
+from time import sleep
 
-# Collect CLI arguments
-f_name = sys.argv[2]
-probability = float(sys.argv[3])
+addr = "0.0.0.0"
 port = int(sys.argv[1])
-hostname = ""
+clients = []
+filepath = sys.argv[2]
+data_parts = []
 
-# Method to send to client
-def rdt_send(msg,s_counter):
-	if msg:	
-		seq_no = str(int(msg[0:32],2))
-		expected_seq = s_counter
-		# print "Waiting on Sequence #" + str(expected_seq)	
-		send_seq_no = '{0:032b}'.format(int(seq_no))
-		pad = '0' * 16
-		ack_ind = '10' * 8
-		return send_seq_no + pad + ack_ind
-	else:
-		return ''
-
-# Calculate the checksum
-def checksum_gen(temp_msg):
-	if temp_msg[48:64] == '01' * 8:
-		total = 0
-		data = [temp_msg[i:i+16] for i in range(0,len(temp_msg),16)]
-		for d in data:
-			total += int(d,2)
-			if total >= 65535:
-				total -= 65535
-			if total == 0:
-				return 1
-			else:
-				return -1
-	else:
-		return -1
-
-# Write to File
-def f_write(msg,f_name):
-	f_ptr = open(f_name,'a')
-	temp_msg = str(msg[64:])
-	temp = len(temp_msg)/8
-	to_write = ''
-	for i in range(0,temp):
-		bit_data = str(temp_msg[i*8:(i+1)*8])
-		char_data = chr(int(bit_data, 2))
-		to_write = to_write + char_data
-	f_ptr.write(to_write)
-	f_ptr.close()
-
-# Return Random number
-def random_num():
-	while 1:
-		generated_number = random.random()
-		if Decimal(generated_number) != Decimal(0.0):
-			break
-	return generated_number
-
-# Communication
-s = socket(AF_INET,SOCK_DGRAM)
-s.bind((hostname,port))
-print ("Listening for client requests ... ")
-s_counter = 0
-while 1:
-	msg, client_address = s.recvfrom(65535)
-	rnum = random_num()
-	if rnum > probability:
-		checksum = checksum_gen(msg)
-		if checksum == 1 and msg[48:64] == '01' * 8:
-			got_seq_no = int(msg[0:32],2)
-			if got_seq_no == s_counter:
-				to_send = rdt_send(msg,s_counter)
-				if to_send:
-					s.sendto(to_send, client_address)
-					f_write(msg,f_name)
-					s_counter = s_counter + 1
-			elif got_seq_no > s_counter:
-				print ("Packet loss, sequence number = " + str(got_seq_no))
-			elif got_seq_no < s_counter:
-				to_send = rdt_send(msg,s_counter)
-				if to_send:
-					# print ("Retransmitted ACK - " + str(got_seq_no))
-					s.sendto(to_send, client_address)
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+sock.bind((addr, port))
+sock.settimeout(2)
+print(f"Server started at port  {port}")
+print("Listening to broadcast address for clients")
+searching = True
+count = 0
+client = []
+while searching:
+	try:
+		data, address = sock.recvfrom(1024)
+	except socket.timeout as e:
+		err = e.args[0]
+		if err == 'timed out':
+			sleep(1)
+			print('Tidak ada client')
+			continue
 		else:
-			print ("Checksum invalid. Packet dropped.")
+			print(e)
+			sys.exit(1)
 	else:
-		got_seq_no = int(msg[0:32],2)
-		print ("Packet loss, sequence number = " + str(got_seq_no))
+		print(f"[!] Client ({address[0]}:{address[1]}) found")
+		sock.sendto(b"Broadcast diterima", (address))
+		client.append(address)
+		continue_search = str(input("[?] Listen lagi?(y/n)"))
+		if (continue_search != "y"):
+			searching = False
+		count = count+1
+clients = client
 
-s.close()
+if (count == 0):
+	print("No Client found:")
+elif (count == 1):
+	print("One Client found:")
+	i = 0
+	for i in range(len(client)):
+		print(i+1, end="")
+		print(".", client[i])
+		i = i+1
+else:
+	print(count, "Clients found:")
+	i = 0
+	for i in range(len(client)):
+		print(i+1, end="")
+		print(".", client[i])
+		i = i+1
+
+def get_data(filepath, data_parts):
+    f = open(filepath, 'rb')
+    data = f.read()
+    f.close()
+    for i in range(0, len(data), 32768):
+        data_parts.append(data[i:i+32768])
+
+def handshake(addr, port, clients):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	sock.bind((addr, port))
+
+	for i in range(len(clients)):
+		sequence_number = 1
+		acknowledgement_number = 0
+		packet = Utils(sequence_number, acknowledgement_number, 'SYN')
+		sock.sendto(packet.convert_to_bytes(), clients[i])
+		print(f"Sending {packet.flag} to {clients[i]}")
+		recv_packet, address = sock.recvfrom(32780)
+		recv_packet = Utils.convert_to_packet(recv_packet)
+		print(f"Received {packet.flag} from {address}")
+		if (recv_packet.flag == "SYN-ACK", recv_packet.acknowledge == (sequence_number+1)):
+			sequence_number = recv_packet.acknowledge
+			acknowledgement_number = recv_packet.sequence + 1
+			packet = Utils(sequence_number, acknowledgement_number, 'ACK')
+			sock.sendto(packet.convert_to_byteclients[i])
+			print(f"Sending {packet.flag} tp {clients[i]}")
+
+
+def send_file(addr, port, clients, data_parts):
+	print("Commencing file transfer...")
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	sock.bind((addr, port))
+	sb = 0
+	N = 2
+	sm = N+1
+
+	for i in range(len(clients)):
+		sb = 0
+		sm = N+1
+		for j in range(sb, sm):
+			packet = Utils(j, 0, "DATA", data=data_parts[j])
+			print(f"[Segment SEQ={packet.sequence}] Sent")
+			packet = packet.convert_to_bytes()
+			sock.sendto(packet, clients[i])
+
+		while True:
+			data, address = sock.recvfrom(32780)
+			recv_packet = Utils.convert_to_packet(data)
+			if (recv_packet.acknowledge > sb and recv_packet.flag == "ACK"):
+				print(f"[Segment SEQ={recv_packet.acknowledge-1}] Acked")
+				sm = (sm - sb) + recv_packet.acknowledge if sm < len(
+					data_parts) else len(data_parts)
+				sb = recv_packet.acknowledge
+				if (recv_packet.acknowledge == len(data_parts)):
+					packet = Utils(sb, 0, "FIN")
+					packet = packet.convert_to_bytes()
+					sock.sendto(packet, clients[i])
+				else:
+					packet = Utils(sm-1, 0, "DATA",
+									data=data_parts[sm-1])
+					print(f"[Segment SEQ={packet.sequence}] Sent")
+					packet = packet.convert_to_bytes()
+					sock.sendto(packet, clients[i])
+
+			elif (recv_packet.flag == "FIN-ACK"):
+				break
+
+			else:
+				for j in range(sb, sm):
+					packet = Utils(sb, 0, "DATA", data=data_parts[j])
+					print(f"[Segment SEQ={packet.sequence}] Sent")
+					packet.create_checksum()
+					packet = packet.convert_to_bytes()
+					sock.sendto(packet, clients[i])
+			sleep(2)
+	sock.close()
+	print("Server Connection Closed")
+
+handshake(addr, port)
+get_data(filepath)
+print("data length", len(data_parts))
+send_file(addr, port, clients, data_parts)
