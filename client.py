@@ -22,25 +22,21 @@ print("broadcasting succeeded")
 response, addr = sock.recvfrom(32780)
 print(response.decode("utf-8"), "dari address:", addr)
 
-def handshake(addr, port):
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.bind((addr, port))
-	recv_packet, addr = sock.recvfrom(32780)
+def handshake(addr, port, sock):
+	recv_packet, address = sock.recvfrom(32780)
 	recv_packet = Utils.convert_to_packet(recv_packet)
-	print(f"Received {recv_packet.flag} from {addr}")
+	print(f"Received {recv_packet.flag} from {address}")
 	if (recv_packet.flag == "SYN"):
 		sequence_number = 1
 		acknowledgement_number = recv_packet.sequence + 1
 		packet = Utils(sequence_number, acknowledgement_number, 'SYN-ACK')
-		print(f"Sending {packet.flag} to {addr}")
+		print(f"Sending {packet.flag} to {address}")
 		sock.sendto(packet.convert_to_bytes(), addr)
-	recv_packet, addr = sock.recvfrom(32780)
+	recv_packet, address = sock.recvfrom(32780)
 	recv_packet = Utils.convert_to_packet(recv_packet)
-	print(f"Received {recv_packet.flag} from {addr}")
+	print(f"Received {recv_packet.flag} from {address}")
 
-def recmsg(addr, port, filepath, packet):
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	# sock.bind((addr, port))
+def recmsg(addr, port, filepath, packet, sock):
 	rn = 0
 	f = open(filepath, 'ab')
 	while (True):
@@ -65,5 +61,5 @@ def recmsg(addr, port, filepath, packet):
 	sock.close()
 	print("Client Connection Closed")
 
-handshake(addr, port)
-recmsg(addr, port, path, packet)
+handshake(addr, port, sock)
+recmsg(addr, port, path, packet, sock)

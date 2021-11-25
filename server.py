@@ -7,27 +7,25 @@ addr = "0.0.0.0"
 port = int(sys.argv[1])
 clients = []
 filepath = sys.argv[2]
-data_parts = []
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 sock.bind((addr, port))
 sock.settimeout(2)
-print(f"Server started at port  {port}")
-print("Listening to broadcast address for clients")
+print(f"Server started at port  {port} ...")
+print("Listening to broadcast address for clients.")
+
 searching = True
 count = 0
 client = []
 while searching:
 	try:
 		data, address = sock.recvfrom(1024)
-		print("a")
 	except socket.timeout as e:
-		print("b")
 		err = e.args[0]
 		if err == 'timed out':
-			sleep(1)
-			print('Tidak ada client')
+			sleep(2)
+			print('no client')
 			continue
 		else:
 			print(e)
@@ -36,21 +34,14 @@ while searching:
 		print(f"[!] Client ({address[0]}:{address[1]}) found")
 		sock.sendto(b"Broadcast diterima", (address))
 		client.append(address)
-		continue_search = str(input("[?] Listen lagi?(y/n)"))
+		continue_search = str(input("[?] Listen more ? (y/n) "))
 		if (continue_search != "y"):
 			searching = False
 		count = count+1
 clients = client
 
 if (count == 0):
-	print("No Client found:")
-elif (count == 1):
-	print("One Client found:")
-	i = 0
-	for i in range(len(client)):
-		print(i+1, end="")
-		print(".", client[i])
-		i = i+1
+	print("No Client found")
 else:
 	print(count, "Clients found:")
 	i = 0
@@ -59,16 +50,20 @@ else:
 		print(".", client[i])
 		i = i+1
 
-def get_data(filepath, data_parts):
-    f = open(filepath, 'rb')
-    data = f.read()
-    f.close()
-    for i in range(0, len(data), 32768):
-        data_parts.append(data[i:i+32768])
+def get_data(filepath):
+	data_parts = []
+	print(filepath)
+	f = open(filepath)
+	data = f.read()
+	f.close()
+	print(data, len(data))
+	for i in range(0, len(data), 32768):
+		data_parts.append(data[i:i+32768])
+	print("data length", len(data_parts))
+	print(data_parts)
+	return data_parts
 
-def handshake(addr, port, clients):
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.bind((addr, port))
+def handshake(addr, port, clients, sock):
 
 	for i in range(len(clients)):
 		sequence_number = 1
@@ -83,14 +78,12 @@ def handshake(addr, port, clients):
 			sequence_number = recv_packet.acknowledge
 			acknowledgement_number = recv_packet.sequence + 1
 			packet = Utils(sequence_number, acknowledgement_number, 'ACK')
-			sock.sendto(packet.convert_to_byteclients[i])
+			sock.sendto(packet.convert_to_bytes(), clients[i])
 			print(f"Sending {packet.flag} tp {clients[i]}")
 
 
-def send_file(addr, port, clients, data_parts):
+def send_file(addr, port, clients, data_parts, sock):
 	print("Commencing file transfer...")
-	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.bind((addr, port))
 	sb = 0
 	N = 2
 	sm = N+1
@@ -137,7 +130,6 @@ def send_file(addr, port, clients, data_parts):
 	sock.close()
 	print("Server Connection Closed")
 
-handshake(addr, port, clients)
-get_data(filepath)
-print("data length", len(data_parts))
-send_file(addr, port, clients, data_parts)
+handshake(addr, port, clients, sock)
+data_parts1 = get_data(filepath)
+send_file(addr, port, clients, data_parts1, sock)
