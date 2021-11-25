@@ -13,7 +13,6 @@ FLAG = {
     'FIN-ACK': 0x11
 }
 
-
 class Utils:
     def __init__(self, sequence, acknowledge, flag, checksum=None, data=None):
         self.sequence = sequence
@@ -39,6 +38,7 @@ class Utils:
         return header
 
     def create_data_bit(self):
+        print(type(self.data))
         # return ''.join(format(ord(i), '08b') for i in self.data)
         return bin(int.from_bytes(self.data, byteorder="big"))[2:]
 

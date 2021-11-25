@@ -2,6 +2,7 @@ import sys
 import socket
 from utils import Utils, MAX_DATA_LENGTH
 from time import sleep
+import base64
 
 addr = "0.0.0.0"
 port = int(sys.argv[1])
@@ -51,17 +52,21 @@ else:
 		i = i+1
 
 def get_data(filepath):
-	data_parts = []
-	print(filepath)
-	f = open(filepath)
-	data = f.read()
-	f.close()
-	print(data, len(data))
+	print("Reading file..")
+	file = open(filepath, "rb")
+	
+	data = base64.b64encode(file.read())
+	file.close()
+	
+	D = []
 	for i in range(0, len(data), 32768):
-		data_parts.append(data[i:i+32768])
-	print("data length", len(data_parts))
-	print(data_parts)
-	return data_parts
+		if (i+32768 < len(data)):
+			D.append(data[i:i+32768])
+		else:
+			D.append(data[i:])
+	print("splitting success")
+	return D
+
 
 def handshake(addr, port, clients, sock):
 
@@ -85,7 +90,7 @@ def handshake(addr, port, clients, sock):
 def send_file(addr, port, clients, data_parts, sock):
 	print("Commencing file transfer...")
 	sb = 0
-	N = 2
+	N = len(data_parts)-1
 	sm = N+1
 
 	for i in range(len(clients)):

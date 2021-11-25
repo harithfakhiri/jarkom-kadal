@@ -15,12 +15,12 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 sock.bind((addr, port))
 print(f'Client ({sock.getsockname()}) found')
-msg = b'assalamualaikum!'
-print("broadcasting")
+msg = b'Searching for Server'
+print("broadcasting...")
 sock.sendto(msg, ('255.255.255.255', 3000))
 print("broadcasting succeeded")
 response, addr = sock.recvfrom(32780)
-print(response.decode("utf-8"), "dari address:", addr)
+print(response.decode("utf-8"), "from", addr)
 
 def handshake(addr, port, sock):
 	recv_packet, address = sock.recvfrom(32780)
