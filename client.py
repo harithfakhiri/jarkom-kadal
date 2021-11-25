@@ -24,7 +24,7 @@ print(response.decode("utf-8"), "dari address:", addr)
 
 def handshake(addr, port):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	# sock.bind((addr, port))
+	sock.bind((addr, port))
 	recv_packet, addr = sock.recvfrom(32780)
 	recv_packet = Utils.convert_to_packet(recv_packet)
 	print(f"Received {recv_packet.flag} from {addr}")
