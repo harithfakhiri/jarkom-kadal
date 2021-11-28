@@ -1,6 +1,6 @@
 import sys
 import socket
-from utils import Utils, MAX_DATA_LENGTH
+from utils import Utils
 from time import sleep
 import base64
 
@@ -12,7 +12,7 @@ filepath = sys.argv[2]
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 sock.bind((addr, port))
-sock.settimeout(2)
+sock.settimeout(10)
 print(f"Server started at port  {port} ...")
 print("Listening to broadcast address for clients.")
 
@@ -25,7 +25,7 @@ while searching:
 	except socket.timeout as e:
 		err = e.args[0]
 		if err == 'timed out':
-			sleep(3)
+			sleep(5)
 			print('no client')
 			continue
 		else:
@@ -35,21 +35,21 @@ while searching:
 		print(f"[!] Client ({address[0]}:{address[1]}) found")
 		sock.sendto(b"Broadcast accepted", (address))
 		client.append(address)
-		continue_search = str(input("[?] Listen more ? (y/n) "))
-		if (continue_search != "y"):
+		listen = str(input("[?] Listen more ? (y/n) "))
+		if (listen != "y"):
 			searching = False
 		count = count+1
 clients = client
 
-if (count == 0):
-	print("No Client found")
-else:
+if (count != 0):
 	print(count, "Clients found:")
 	i = 0
 	for i in range(len(client)):
 		print(i+1, end="")
 		print(".", client[i])
 		i = i+1
+else:
+	print("No Client found")
 
 def get_data(filepath):
 	print("Reading file..")
@@ -60,31 +60,32 @@ def get_data(filepath):
 	
 	D = []
 	for i in range(0, len(data), 32768):
-		if (i+32768 < len(data)):
-			D.append(data[i:i+32768])
-		else:
+		if (i+32768 >= len(data)):
 			D.append(data[i:])
-	print("splitting success")
+			
+		else:
+			D.append(data[i:i+32768])
+	print("split succeeded")
 	return D
 
 
 def handshake(clients, sock):
 
 	for i in range(len(clients)):
-		sequence_number = 1
-		acknowledgement_number = 0
-		packet = Utils(sequence_number, acknowledgement_number, 'SYN')
-		sock.sendto(packet.convert_to_bytes(), clients[i])
-		print(f"Sending {packet.flag} to {clients[i]}")
+		seq_num = 1
+		ack_num = 0
+		packet_dat = Utils(seq_num, ack_num, 'SYN')
+		sock.sendto(packet_dat.toBytes(), clients[i])
+		print(f"Sending {packet_dat.flag} to {clients[i]}")
 		recv_packet, address = sock.recvfrom(32780)
-		recv_packet = Utils.convert_to_packet(recv_packet)
-		print(f"Received {packet.flag} from {address}")
-		if (recv_packet.flag == "SYN-ACK", recv_packet.acknowledge == (sequence_number+1)):
-			sequence_number = recv_packet.acknowledge
-			acknowledgement_number = recv_packet.sequence + 1
-			packet = Utils(sequence_number, acknowledgement_number, 'ACK')
-			sock.sendto(packet.convert_to_bytes(), clients[i])
-			print(f"Sending {packet.flag} tp {clients[i]}")
+		recv_packet_dat = Utils.convert_to_packet(recv_packet)
+		print(f"Received {packet_dat.flag} from {address}")
+		if (recv_packet_dat.flag == "SYN-ACK", recv_packet_dat.acknowledge == (seq_num+1)):
+			seq_num = recv_packet_dat.acknowledge
+			ack_num = recv_packet_dat.sequence + 1
+			packet_dat = Utils(seq_num, ack_num, 'ACK')
+			sock.sendto(packet_dat.toBytes(), clients[i])
+			print(f"Sending {packet_dat.flag} to {clients[i]}")
 
 
 def send_file(clients, data_parts, sock):
@@ -97,42 +98,41 @@ def send_file(clients, data_parts, sock):
 		sb = 0
 		sm = N+1
 		for j in range(sb, sm):
-			packet = Utils(j, 0, "DATA", data=data_parts[j])
-			print(f"[Segment SEQ={packet.sequence}] Sent")
-			packet = packet.convert_to_bytes()
-			sock.sendto(packet, clients[i])
+			packet_dat = Utils(j, 0, "DATA", data=data_parts[j])
+			print(f"[Segment SEQ={packet_dat.sequence}] Sent")
+			packet_dat = packet_dat.toBytes()
+			sock.sendto(packet_dat, clients[i])
 
 		while True:
 			data, address = sock.recvfrom(32780)
-			recv_packet = Utils.convert_to_packet(data)
-			if (recv_packet.acknowledge > sb and recv_packet.flag == "ACK"):
-				print(f"[Segment SEQ={recv_packet.acknowledge-1}] Acked")
+			recv_packet_dat = Utils.convert_to_packet(data)
+			if (recv_packet_dat.acknowledge > sb and recv_packet_dat.flag == "ACK"):
+				print(f"[Segment SEQ={recv_packet_dat.acknowledge-1}] Acked")
 				if sm < len(data_parts) :
-					sm = (sm - sb) + recv_packet.acknowledge
+					sm = (sm - sb) + recv_packet_dat.acknowledge
 				else :
-					sb = recv_packet.acknowledge
-				if (recv_packet.acknowledge == len(data_parts)):
-					packet = Utils(sb, 0, "FIN")
-					packet = packet.convert_to_bytes()
-					sock.sendto(packet, clients[i])
+					sb = recv_packet_dat.acknowledge
+				if (recv_packet_dat.acknowledge == len(data_parts)):
+					packet_dat = Utils(sb, 0, "FIN")
+					packet_dat = packet_dat.toBytes()
+					sock.sendto(packet_dat, clients[i])
 				else:
-					packet = Utils(sm-1, 0, "DATA",
+					packet_dat = Utils(sm-1, 0, "DATA",
 									data=data_parts[sm-1])
-					print(f"[Segment SEQ={packet.sequence}] Sent")
-					packet = packet.convert_to_bytes()
-					sock.sendto(packet, clients[i])
+					print(f"[Segment SEQ={packet_dat.sequence}] Sent")
+					packet_dat = packet_dat.toBytes()
+					sock.sendto(packet_dat, clients[i])
 
-			elif (recv_packet.flag == "FIN-ACK"):
+			elif (recv_packet_dat.flag == "FIN-ACK"):
 				break
 
 			else:
 				for j in range(sb, sm):
-					packet = Utils(sb, 0, "DATA", data=data_parts[j])
-					print(f"[Segment SEQ={packet.sequence}] Sent")
-					packet.create_checksum()
-					packet = packet.convert_to_bytes()
-					sock.sendto(packet, clients[i])
-			sleep(3)
+					packet_dat = Utils(sb, 0, "DATA", data=data_parts[j])
+					print(f"[Segment SEQ={packet_dat.sequence}] Sent")
+					packet_dat.Checkingsum()
+					packet_dat = packet_dat.toBytes()
+					sock.sendto(packet_dat, clients[i])
 	sock.close()
 	print("Server Connection Closed")
 

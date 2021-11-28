@@ -5,12 +5,12 @@ FORMAT = 'utf-8'
 MAX_DATA_LENGTH = 32768
 MAX_PACKET_LENGTH = MAX_DATA_LENGTH + 9
 FLAG = {
-    'SYN': 0x2,
-    'ACK': 0x10,
-    'FIN': 0x1,
     'DATA': 0x0,
-    'SYN-ACK': 0x12,
-    'FIN-ACK': 0x11
+    'SYN' : 0x40,
+    'ACK' : 0x8,
+    'FIN' : 0x80,
+    'SYN-ACK': 0x48,
+    'FIN-ACK': 0x88
 }
 
 class Utils:
@@ -21,7 +21,7 @@ class Utils:
         self.checksum = checksum
         self.data = data
 
-    def create_header_bit(self):
+    def bitHeader(self):
         sequence = format(self.sequence, '032b')
         acknowledge = format(self.acknowledge, '032b')
         flag = format(FLAG[self.flag], '08b')
@@ -30,9 +30,9 @@ class Utils:
 
         return header
 
-    def convert_to_bytes(self):
-        header = self.create_header_bit()
-        header = header + self.create_checksum()
+    def toBytes(self):
+        header = self.bitHeader()
+        header = header + self.Checkingsum()
         header = int(header, 2).to_bytes(12, 'big')
 
         if (self.data):
@@ -42,8 +42,8 @@ class Utils:
 
         return final_bytes
 
-    def create_checksum(self):
-        header = self.create_header_bit()
+    def Checkingsum(self):
+        header = self.bitHeader()
         integer_sum = 0
 
         # count header sum
@@ -61,24 +61,6 @@ class Utils:
             '1' if i == '0' else '0' for i in format(integer_sum, '016b'))
 
         return checksum
-
-    def validate_checksum(self):
-
-        header_bit = self.create_header_bit()
-        data_bit = bin(int.from_bytes(self.data, byteorder="big"))[2:]
-
-        new_sum = 0
-        for i in range(0, len(header_bit), 16):
-            new_sum += int(header_bit[i:i+16], base=2)
-        for i in range(0, len(data_bit), 16):
-            new_sum += int(data_bit[i:i+16], base=2)
-        new_sum += int(self.checksum, base=2)
-
-        bit_sum = format(new_sum, '016b')
-        for i in range(len(bit_sum)):
-            if bit_sum[i] == '0':
-                return False
-        return True
 
     @ staticmethod
     def convert_to_packet(bytes):
